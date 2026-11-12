@@ -165,7 +165,35 @@ bool try_propose(const int proposer,
                         int* cur_poss,
                         const int ucount, 
                         std::set<int>* match_sets) {
-    // TODO
+    for (int i = cur_poss[proposer]; i < ucount; i++) {
+        int candidate = sorted_indices[proposer][i];
+        cur_poss[proposer]++;
+
+        // Skip incompatible candidates
+        if (scores[proposer][candidate] == -1) {
+            continue;
+        }
+
+        // Skip already matched candidates
+        if (matched[proposer][candidate]) {
+            continue;
+        }
+
+        // If the candidate has capacity to accept a new match, make a match
+        if (match_sets[candidate].size() < iter) {
+            addmatch(proposer, candidate, matched, match_sets);
+            return true;
+        }
+
+        int worst_partner = find_worst_partner(candidate, scores, match_sets);
+
+        // Compare proposer to candidate's worst match, replace the worst match with the proposer if proposer scores higher
+        if (scores[candidate][proposer] > scores[candidate][worst_partner]) {
+            removematch(candidate, worst_partner, matched, match_sets);
+            addmatch(candidate, proposer, matched, match_sets);
+            return true;
+        }
+    }
     return false;
 }
 
@@ -185,8 +213,28 @@ void make_matches(const int target,
                   int* cur_poss,
                   const int ucount,
                   std::set<int>* match_sets) {
+    // Reset cur_poss
+    for (int proposer = 0; proposer < ucount; proposer++) {
+        cur_poss[proposer] = 0;
+    }
 
-    // TODO
+    for (int iter = 1; iter <= target; iter++) {
+        bool match_made = false;
+
+        for (int proposer = 0; proposer < ucount; proposer++) {
+            // propose if the proposer has capacity
+            if (match_sets[proposer].size() < iter) {
+                if (try_propose(proposer, iter, sorted_indices, scores, matched, cur_poss, ucount, match_sets)) {
+                    match_made = true;
+                }
+            }
+        }
+
+        // if matches were made, keep the same round and pass over the proposers again
+        if (match_made) {
+            iter--;
+        }
+    }
     return;
 }
 
